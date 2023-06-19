@@ -98,8 +98,9 @@ export const embedAndGetFontObj = async (arg: { pdfDoc: PDFDocument; font: Font 
 export const getEmbeddedPagesAndEmbedPdfBoxes = async (arg: {
   pdfDoc: PDFDocument;
   basePdf: BasePdf;
+  options: any;
 }) => {
-  const { pdfDoc, basePdf } = arg;
+  const { pdfDoc, basePdf, options } = arg;
   let embeddedPages: PDFEmbeddedPage[] = [];
   let embedPdfBoxes: EmbedPdfBox[] = [];
   const willLoadPdf = typeof basePdf === 'string' ? await getB64BasePdf(basePdf) : basePdf;
@@ -111,6 +112,31 @@ export const getEmbeddedPagesAndEmbedPdfBoxes = async (arg: {
     bleedBox: p.getBleedBox(),
     trimBox: p.getTrimBox(),
   }));
+
+  if (options['landscape'] === true) {
+    embedPdfBoxes = embedPdfBoxes.map((p) => {
+      return {
+        mediaBox: {
+          x: p.mediaBox.x,
+          y: p.mediaBox.y,
+          width: p.mediaBox.height,
+          height: p.mediaBox.width,
+        },
+        bleedBox: {
+          x: p.bleedBox.x,
+          y: p.bleedBox.y,
+          width: p.bleedBox.height,
+          height: p.bleedBox.width,
+        },
+        trimBox: {
+          x: p.trimBox.x,
+          y: p.trimBox.y,
+          width: p.trimBox.height,
+          height: p.trimBox.width,
+        },
+      };
+    });
+  }
 
   const boundingBoxes = embedPdfPages.map((p) => {
     const { x, y, width, height } = p.getMediaBox();
@@ -167,8 +193,18 @@ const hex2RgbColor = (hexString: string | undefined) => {
   return undefined;
 };
 
-const getFontProp = async ({ input, font, schema }: { input: string, font: Font, schema: TextSchema }) => {
-  const size = schema.dynamicFontSize ? await calculateDynamicFontSize({ textSchema: schema, font, input }) : schema.fontSize ?? DEFAULT_FONT_SIZE;
+const getFontProp = async ({
+  input,
+  font,
+  schema,
+}: {
+  input: string;
+  font: Font;
+  schema: TextSchema;
+}) => {
+  const size = schema.dynamicFontSize
+    ? await calculateDynamicFontSize({ textSchema: schema, font, input })
+    : schema.fontSize ?? DEFAULT_FONT_SIZE;
   const color = hex2RgbColor(schema.fontColor ?? DEFAULT_FONT_COLOR);
   const alignment = schema.alignment ?? DEFAULT_ALIGNMENT;
   const lineHeight = schema.lineHeight ?? DEFAULT_LINE_HEIGHT;
@@ -231,7 +267,7 @@ const getOverPosition = (inputLine: string, isOverEval: IsOverEval) => {
  */
 const getSplitPosition = (inputLine: string, isOverEval: IsOverEval) => {
   const overPos = getOverPosition(inputLine, isOverEval);
-  if (overPos === null) return inputLine.length;  // input line is shorter than the available space
+  if (overPos === null) return inputLine.length; // input line is shorter than the available space
 
   let overPosTmp = overPos;
   while (inputLine[overPosTmp] !== ' ' && overPosTmp >= 0) {
@@ -251,7 +287,8 @@ const getSplittedLines = (inputLine: string, isOverEval: IsOverEval): string[] =
   const splittedLine = inputLine.substring(0, splitPos);
   const rest = inputLine.substring(splitPos).trimStart();
 
-  if (rest.length === 0) { // end recursion if there is no rest
+  if (rest.length === 0) {
+    // end recursion if there is no rest
     return [splittedLine];
   }
 
@@ -277,12 +314,17 @@ const drawInputByTextSchema = async (arg: {
   const { input, templateSchema, page, pageHeight, fontSetting } = arg;
   const { font, pdfFontObj, fallbackFontName } = fontSetting;
 
-  const pdfFontValue = pdfFontObj[templateSchema.fontName ? templateSchema.fontName : fallbackFontName];
+  const pdfFontValue =
+    pdfFontObj[templateSchema.fontName ? templateSchema.fontName : fallbackFontName];
 
   drawBackgroundColor({ templateSchema, page, pageHeight });
 
   const { width, rotate } = getSchemaSizeAndRotate(templateSchema);
-  const { size, color, alignment, lineHeight, characterSpacing } = await getFontProp({ input, font, schema: templateSchema });
+  const { size, color, alignment, lineHeight, characterSpacing } = await getFontProp({
+    input,
+    font,
+    schema: templateSchema,
+  });
 
   page.pushOperators(setCharacterSpacing(characterSpacing));
 
@@ -291,7 +333,8 @@ const drawInputByTextSchema = async (arg: {
   input.split(/\r|\n|\r\n/g).forEach((inputLine, inputLineIndex) => {
     const isOverEval = (testString: string) => {
       const testStringWidth =
-        pdfFontValue.widthOfTextAtSize(testString, size) + (testString.length - 1) * characterSpacing;
+        pdfFontValue.widthOfTextAtSize(testString, size) +
+        (testString.length - 1) * characterSpacing;
       return width <= testStringWidth;
     };
     const splitedLines = getSplittedLines(inputLine, isOverEval);
@@ -299,6 +342,7 @@ const drawInputByTextSchema = async (arg: {
       const textWidth =
         pdfFontValue.widthOfTextAtSize(splitedLine, size) +
         (splitedLine.length - 1) * characterSpacing;
+
       page.drawText(splitedLine, {
         x: calcX(templateSchema.position.x, alignment, width, textWidth),
         y:
@@ -408,9 +452,16 @@ export const drawEmbeddedPage = (arg: {
   page: PDFPage;
   embeddedPage: PDFEmbeddedPage;
   embedPdfBox: EmbedPdfBox;
+  options: any;
 }) => {
-  const { page, embeddedPage, embedPdfBox } = arg;
-  page.drawPage(embeddedPage);
+  const { page, embeddedPage, embedPdfBox, options } = arg;
+
+  if (options['landscape'] === true) {
+    page.drawPage(embeddedPage, { x: 0, y: embeddedPage.width, rotate: degrees(-90) });
+  } else {
+    page.drawPage(embeddedPage);
+  }
+
   const { mediaBox: mb, bleedBox: bb, trimBox: tb } = embedPdfBox;
   page.setMediaBox(mb.x, mb.y, mb.width, mb.height);
   page.setBleedBox(bb.x, bb.y, bb.width, bb.height);

@@ -1,16 +1,7 @@
-import { PDFDocument } from '@pdfme/pdf-lib';
+import { PDFDocument, degrees } from '@pdfme/pdf-lib';
 import * as fontkit from 'fontkit';
-import type {
-  Font,
-  GenerateProps,
-  SchemaInputs,
-  Template,
-} from '@pdfme/common';
-import {
-  getDefaultFont,
-  getFallbackFontName,
-  checkGenerateProps,
-} from '@pdfme/common';
+import type { Font, GenerateProps, SchemaInputs, Template } from '@pdfme/common';
+import { getDefaultFont, getFallbackFontName, checkGenerateProps } from '@pdfme/common';
 import {
   getEmbeddedPagesAndEmbedPdfBoxes,
   drawInputByTemplateSchema,
@@ -20,8 +11,13 @@ import {
 } from './helper.js';
 import { TOOL_NAME } from './constants.js';
 
-const preprocessing = async (arg: { inputs: SchemaInputs[]; template: Template; font: Font }) => {
-  const { template, font } = arg;
+const preprocessing = async (arg: {
+  inputs: SchemaInputs[];
+  template: Template;
+  font: Font;
+  options: any;
+}) => {
+  const { template, font, options } = arg;
   const { basePdf } = template;
   const fallbackFontName = getFallbackFontName(font);
 
@@ -30,7 +26,7 @@ const preprocessing = async (arg: { inputs: SchemaInputs[]; template: Template; 
 
   const pdfFontObj = await embedAndGetFontObj({ pdfDoc, font });
 
-  const pagesAndBoxes = await getEmbeddedPagesAndEmbedPdfBoxes({ pdfDoc, basePdf });
+  const pagesAndBoxes = await getEmbeddedPagesAndEmbedPdfBoxes({ pdfDoc, basePdf, options });
   const { embeddedPages, embedPdfBoxes } = pagesAndBoxes;
 
   return { pdfDoc, pdfFontObj, fallbackFontName, embeddedPages, embedPdfBoxes };
@@ -47,9 +43,7 @@ const generate = async (props: GenerateProps) => {
   const { font = getDefaultFont() } = options;
   const { schemas } = template;
 
-
-
-  const preRes = await preprocessing({ inputs, template, font });
+  const preRes = await preprocessing({ inputs, template, font, options });
   const { pdfDoc, pdfFontObj, fallbackFontName, embeddedPages, embedPdfBoxes } = preRes;
 
   const inputImageCache: InputImageCache = {};
@@ -58,12 +52,17 @@ const generate = async (props: GenerateProps) => {
     const keys = Object.keys(inputObj);
     for (let j = 0; j < embeddedPages.length; j += 1) {
       const embeddedPage = embeddedPages[j];
-      const { width: pageWidth, height: pageHeight } = embeddedPage;
-      const embedPdfBox = embedPdfBoxes[j];
 
+      let { width: pageWidth, height: pageHeight } = embeddedPage;
+      if (options['landscape'] === true) {
+        const tmp = pageWidth;
+        pageWidth = pageHeight;
+        pageHeight = tmp;
+      }
+      const embedPdfBox = embedPdfBoxes[j];
       const page = pdfDoc.addPage([pageWidth, pageHeight]);
 
-      drawEmbeddedPage({ page, embeddedPage, embedPdfBox });
+      drawEmbeddedPage({ page, embeddedPage, embedPdfBox, options });
       for (let l = 0; l < keys.length; l += 1) {
         const key = keys[l];
         const schema = schemas[j];

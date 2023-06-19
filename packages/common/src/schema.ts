@@ -78,7 +78,7 @@ export const Template = z.object({
 
 export const Inputs = z.array(z.record(z.string())).min(1);
 
-const CommonOptions = z.object({ font: Font.optional() });
+const CommonOptions = z.object({ font: Font.optional(), landscape: z.boolean().optional() });
 
 export const CommonProps = z.object({
   template: Template,
