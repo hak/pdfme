@@ -343,20 +343,39 @@ const drawInputByTextSchema = async (arg: {
         pdfFontValue.widthOfTextAtSize(splitedLine, size) +
         (splitedLine.length - 1) * characterSpacing;
 
-      page.drawText(splitedLine, {
-        x: calcX(templateSchema.position.x, alignment, width, textWidth),
-        y:
-          calcY(templateSchema.position.y, pageHeight, size) -
-          lineHeight * size * (inputLineIndex + splitedLineIndex + beforeLineOver) -
-          (lineHeight === 0 ? 0 : ((lineHeight - 1) * size) / 2),
-        rotate,
-        size,
-        color,
-        lineHeight: lineHeight * size,
-        maxWidth: width,
-        font: pdfFontValue,
-        wordBreaks: [''],
-      });
+      // Patch to draw ellipse.
+      if (splitedLine === 'ellipse') {
+        console.log('drawing ellipse.');
+        page.drawEllipse({
+          x: calcX(templateSchema.position.x, alignment, width, textWidth) + width / 2,
+          y:
+            calcY(templateSchema.position.y, pageHeight, size) -
+            lineHeight * size * (inputLineIndex + splitedLineIndex + beforeLineOver) -
+            (lineHeight === 0 ? 0 : ((lineHeight - 1) * size) / 2) -
+            templateSchema.height / 2,
+          rotate,
+          xScale: width / 2,
+          yScale: templateSchema.height / 2,
+          opacity: 0.0,
+          borderWidth: size,
+        });
+      } else {
+        page.drawText(splitedLine, {
+          x: calcX(templateSchema.position.x, alignment, width, textWidth),
+          y:
+            calcY(templateSchema.position.y, pageHeight, size) -
+            lineHeight * size * (inputLineIndex + splitedLineIndex + beforeLineOver) -
+            (lineHeight === 0 ? 0 : ((lineHeight - 1) * size) / 2),
+          rotate,
+          size,
+          color,
+          lineHeight: lineHeight * size,
+          maxWidth: width,
+          font: pdfFontValue,
+          wordBreaks: [''],
+        });
+      }
+
       if (splitedLines.length === splitedLineIndex + 1) beforeLineOver += splitedLineIndex;
     };
 
