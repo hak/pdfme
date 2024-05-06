@@ -47,16 +47,16 @@
   },
   "dependencies": {
     "@pdfme/common": "file:../common",
-    "@pdfme/pdf-lib": "^1.17.3",
+    "@pdfme/pdf-lib": "^1.18.3",
     "atob": "^2.1.2",
-    "bwip-js": "^3.2.2",
+    "bwip-js": "^3.4.5",
     "fontkit": "^2.0.2"
   },
   "devDependencies": {
-    "@types/bwip-js": "^3.0.0",
-    "@types/pngjs": "^6.0.1",
+    "@types/bwip-js": "^3.2.3",
+    "@types/pngjs": "^6.0.5",
     "jsqr": "^1.4.0",
-    "pdf2json": "^2.0.0",
+    "pdf2json": "^2.0.2",
     "pngjs": "^6.0.0"
   },
   "jest": {
